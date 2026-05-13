@@ -13,7 +13,7 @@ struct ClaudeCodeGoApp: App {
 
     var body: some Scene {
         // Main window
-        WindowGroup("ClaudeCode GO") {
+        Window("ClaudeCode GO", id: "main") {
             ContentView()
                 .environmentObject(proxyManager)
                 .onAppear {

@@ -3,6 +3,7 @@ import SwiftUI
 /// Menu bar dropdown content shown when clicking the menu bar icon.
 struct StatusMenuView: View {
     @EnvironmentObject var proxyManager: ProxyManager
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -86,11 +87,7 @@ struct StatusMenuView: View {
 
             // Show window
             Button {
-                if let window = NSApp.windows.first(where: { $0.title == "ClaudeCode GO" }) {
-                    window.level = .floating
-                    window.makeKeyAndOrderFront(nil)
-                    NSApp.activate(ignoringOtherApps: true)
-                }
+                showMainWindow()
             } label: {
                 Label("显示窗口", systemImage: "macwindow")
             }
@@ -122,5 +119,27 @@ struct StatusMenuView: View {
         case .running: return .green
         case .error: return .red
         }
+    }
+
+    private func showMainWindow() {
+        if let window = NSApp.windows.first(where: { $0.title == "ClaudeCode GO" }) {
+            focus(window)
+            return
+        }
+
+        openWindow(id: "main")
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            if let window = NSApp.windows.first(where: { $0.title == "ClaudeCode GO" }) {
+                focus(window)
+            }
+        }
+    }
+
+    private func focus(_ window: NSWindow) {
+        NSApp.activate(ignoringOtherApps: true)
+        window.level = .normal
+        window.deminiaturize(nil)
+        window.makeKeyAndOrderFront(nil)
     }
 }

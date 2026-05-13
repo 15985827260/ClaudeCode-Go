@@ -9,7 +9,7 @@ struct ControlPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("操作", systemImage: "gearshape")
+            Label("控制", systemImage: "slider.horizontal.3")
                 .font(.headline)
                 .foregroundColor(.secondary)
 
@@ -68,9 +68,20 @@ struct PanelButton: View {
                 .frame(minWidth: 80)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
+                .foregroundColor(.white)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(disabled ? Color.gray : color)
+                )
+                .overlay {
+                    if isHovered && !disabled {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.white.opacity(0.12))
+                    }
+                }
+                .opacity(disabled ? 0.6 : 1)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(disabled ? Color.gray : color)
+        .buttonStyle(.plain)
         .disabled(disabled)
         .onHover { hovering in
             isHovered = hovering

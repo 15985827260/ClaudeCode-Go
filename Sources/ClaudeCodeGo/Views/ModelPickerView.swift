@@ -34,6 +34,7 @@ struct ModelPickerView: View {
                 EmptyView()
             }
             .pickerStyle(.menu)
+            .fixedSize(horizontal: true, vertical: false)
             .frame(maxWidth: .infinity, alignment: .leading)
             .onChange(of: selectedModel) { newModel in
                 onSwitch(newModel)

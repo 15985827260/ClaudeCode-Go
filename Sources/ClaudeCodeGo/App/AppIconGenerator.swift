@@ -12,29 +12,26 @@ enum AppIconGenerator {
         }
     }
 
-    /// Returns a small template image for the menu bar icon.
-    static func menuBarIcon() -> NSImage {
-        let img = NSImage(size: NSSize(width: 20, height: 20), flipped: false) { rect in
+    /// Returns the menu bar icon for the given state.
+    static func menuBarIcon(running: Bool) -> NSImage {
+        let name = running ? "MenubarOn" : "MenubarOff"
+        if let image = NSImage(named: name) {
+            return image
+        }
+        // Fallback: load from bundled resource
+        if let path = Bundle.module.path(forResource: name, ofType: "png"),
+           let image = NSImage(contentsOfFile: path) {
+            return image
+        }
+        // Last resort: small colored dot
+        let img = NSImage(size: NSSize(width: 16, height: 16), flipped: false) { rect in
             guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
-            ctx.setFillColor(CGColor(srgbRed: 0.25, green: 0.25, blue: 0.25, alpha: 1))
-            ctx.fillEllipse(in: rect.insetBy(dx: 1, dy: 1))
-
-            let text = "CG" as NSString
-            let font = NSFont.systemFont(ofSize: 11, weight: .bold)
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: font,
-                .foregroundColor: NSColor.white,
-            ]
-            let textSize = text.size(withAttributes: attrs)
-            text.draw(in: CGRect(
-                x: rect.midX - textSize.width / 2,
-                y: rect.midY - textSize.height / 2 - 1,
-                width: textSize.width,
-                height: textSize.height
-            ), withAttributes: attrs)
+            ctx.setFillColor(running
+                ? CGColor(srgbRed: 0.3, green: 0.69, blue: 0.52, alpha: 1)
+                : CGColor(srgbRed: 0.78, green: 0.8, blue: 0.85, alpha: 1))
+            ctx.fillEllipse(in: rect)
             return true
         }
-        img.isTemplate = true
         return img
     }
 }

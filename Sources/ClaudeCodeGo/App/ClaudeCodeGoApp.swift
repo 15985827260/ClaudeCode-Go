@@ -46,12 +46,7 @@ struct ClaudeCodeGoApp: App {
                 .environmentObject(proxyManager)
         } label: {
             // Dynamic icon based on state
-            if proxyManager.state.isRunning {
-                Image(nsImage: AppIconGenerator.menuBarIcon())
-            } else {
-                Image(systemName: "circle.slash")
-                    .foregroundStyle(.red)
-            }
+            Image(nsImage: AppIconGenerator.menuBarIcon(running: proxyManager.state.isRunning))
         }
         .menuBarExtraStyle(.menu)
     }

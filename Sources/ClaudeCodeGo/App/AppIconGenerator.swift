@@ -13,25 +13,30 @@ enum AppIconGenerator {
     }
 
     /// Returns the menu bar icon for the given state.
+    /// Loads a multi-representation NSImage with @1x (32×32) and @2x (64×64)
+    /// so macOS picks the right size for the current display.
     static func menuBarIcon(running: Bool) -> NSImage {
-        let name = running ? "MenubarOn" : "MenubarOff"
-        if let image = NSImage(named: name) {
-            return image
+        let baseName = running ? "StatusbarOn" : "StatusbarOff"
+        let img = NSImage(size: NSSize(width: 32, height: 32))
+
+        for (suffix, scale) in [("", NSSize(width: 32, height: 32)), ("@2x", NSSize(width: 64, height: 64))] {
+            let name = baseName + suffix
+            if let path = Bundle.module.path(forResource: name, ofType: "png"),
+               let nsImage = NSImage(contentsOfFile: path),
+               let rep = nsImage.representations.first {
+                rep.size = scale
+                img.addRepresentation(rep)
+            }
         }
-        // Fallback: load from bundled resource
-        if let path = Bundle.module.path(forResource: name, ofType: "png"),
-           let image = NSImage(contentsOfFile: path) {
-            return image
+
+        // Fallback: try single PNG
+        if img.representations.isEmpty,
+           let path = Bundle.module.path(forResource: baseName, ofType: "png"),
+           let single = NSImage(contentsOfFile: path) {
+            return single
         }
-        // Last resort: small colored dot
-        let img = NSImage(size: NSSize(width: 16, height: 16), flipped: false) { rect in
-            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
-            ctx.setFillColor(running
-                ? CGColor(srgbRed: 0.3, green: 0.69, blue: 0.52, alpha: 1)
-                : CGColor(srgbRed: 0.78, green: 0.8, blue: 0.85, alpha: 1))
-            ctx.fillEllipse(in: rect)
-            return true
-        }
+
+        img.isTemplate = true
         return img
     }
 }

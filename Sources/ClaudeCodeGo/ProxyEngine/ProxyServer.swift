@@ -13,7 +13,8 @@ class ProxyServer {
     private var _isRunning = false
     private let connectionsLock = NSLock()
     private var _connections = [UUID: NWConnection]()
-    private let queue = DispatchQueue(label: "com.claudecode.go.proxy.server", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.claudecode.go.proxy.server", qos: .utility)
+    private let logsRequestBodyPreview = false
 
     // Configuration
     private var port: UInt16 = 3456
@@ -106,10 +107,13 @@ class ProxyServer {
         connectionsLock.unlock()
 
         connection.stateUpdateHandler = { [weak self] state in
-            if case .cancelled = state, case .failed = state {
+            switch state {
+            case .cancelled, .failed:
                 self?.connectionsLock.lock()
                 self?._connections.removeValue(forKey: connID)
                 self?.connectionsLock.unlock()
+            default:
+                break
             }
         }
 
@@ -137,7 +141,9 @@ class ProxyServer {
                 let contentLen = headers["Content-Length"] ?? "?"
                 self.log("→ \(method) /\(path)  content-length:\(contentLen) 来自 \(host)")
                 // Log request body preview for POST requests
-                if method == "POST", let bodyStr = String(data: body, encoding: .utf8) {
+                if self.logsRequestBodyPreview,
+                   method == "POST",
+                   let bodyStr = String(data: body, encoding: .utf8) {
                     let preview = bodyStr.prefix(500)
                     self.log("  POST body: \(preview)")
                 }
@@ -504,7 +510,8 @@ class ProxyServer {
 
         let taskID = UUID().uuidString.prefix(6)
         log("⬆️ [\(taskID)] 发送到上游: model=\(req.model) stream=\(req.stream)")
-        if let bodyStr = urlReq.httpBody.flatMap({ String(data: $0, encoding: .utf8) }) {
+        if logsRequestBodyPreview,
+           let bodyStr = urlReq.httpBody.flatMap({ String(data: $0, encoding: .utf8) }) {
             log("  [\(taskID)] 请求体预览: \(bodyStr.prefix(300))")
         }
 

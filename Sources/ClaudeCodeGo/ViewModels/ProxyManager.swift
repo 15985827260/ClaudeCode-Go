@@ -19,6 +19,9 @@ class ProxyManager: ObservableObject {
     @Published var port: Int = 3456 {
         didSet { savePort() }
     }
+    @Published var lowPowerMode: Bool = true {
+        didSet { saveLowPowerMode() }
+    }
 
     let logStore = LogStore()
     private let proxyServer = ProxyServer()
@@ -50,10 +53,14 @@ class ProxyManager: ObservableObject {
             self.apiKey = ""
         }
 
+        self.lowPowerMode = UserDefaults.standard.object(forKey: "lowPowerMode") as? Bool ?? true
+        applyLowPowerMode()
+
         // Set up server callbacks
         proxyServer.onLog = { [weak self] line in
             DispatchQueue.main.async {
-                self?.logStore.appendRawLine(line)
+                guard let self, !self.lowPowerMode else { return }
+                self.logStore.appendRawLine(line)
             }
         }
         proxyServer.onStateChange = { [weak self] running in
@@ -71,14 +78,14 @@ class ProxyManager: ObservableObject {
 
         // Ensure API key
         if apiKey.isEmpty {
-            logStore.append(level: .error, message: "API Key 未设置。请点击工具栏的「API Key」按钮进行配置")
+            appendLog(level: .error, message: "API Key 未设置。请点击工具栏的「API Key」按钮进行配置")
             state = .error("API Key 未设置")
             return
         }
 
         state = .starting
-        logStore.append(level: .info, message: "正在启动代理服务...")
-        logStore.append(level: .info, message: "模型: \(currentModel.name) (\(currentModel.id))")
+        appendLog(level: .info, message: "正在启动代理服务...")
+        appendLog(level: .info, message: "模型: \(currentModel.name) (\(currentModel.id))")
 
         do {
             try proxyServer.start(
@@ -89,7 +96,7 @@ class ProxyManager: ObservableObject {
                 maxTokens: 4096
             )
         } catch {
-            logStore.append(level: .error, message: "启动失败: \(error.localizedDescription)")
+            appendLog(level: .error, message: "启动失败: \(error.localizedDescription)")
             state = .error(error.localizedDescription)
         }
     }
@@ -97,14 +104,14 @@ class ProxyManager: ObservableObject {
     func stopProxy() {
         guard state.isRunning || state.isTransitioning else { return }
         state = .stopping
-        logStore.append(level: .info, message: "正在停止代理服务...")
+        appendLog(level: .info, message: "正在停止代理服务...")
         proxyServer.stop()
         state = .stopped
     }
 
     func restartProxy() {
         if state.isRunning || state.isTransitioning {
-            logStore.append(level: .info, message: "正在重启代理服务...")
+            appendLog(level: .info, message: "正在重启代理服务...")
             proxyServer.stop()
             state = .stopped
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
@@ -117,18 +124,22 @@ class ProxyManager: ObservableObject {
 
     func switchModel(to model: ModelOption) {
         guard model != currentModel else { return }
-        logStore.append(level: .info, message: "切换模型: \(currentModel.name) → \(model.name)")
+        appendLog(level: .info, message: "切换模型: \(currentModel.name) → \(model.name)")
         currentModel = model
 
         if proxyServer.isActive {
             // Hot-swap model at runtime — no restart needed
             proxyServer.updateModel(model.id)
-            logStore.append(level: .info, message: "模型已切换，下次请求生效")
+            appendLog(level: .info, message: "模型已切换，下次请求生效")
         }
     }
 
     func clearLogs() {
         logStore.clear()
+    }
+
+    func setLogRenderingActive(_ active: Bool) {
+        logStore.setRenderingEnabled(active)
     }
 
     // MARK: - Private
@@ -144,5 +155,19 @@ class ProxyManager: ObservableObject {
     private func saveAPIKey() {
         guard !apiKey.isEmpty else { return }
         UserDefaults.standard.set(apiKey, forKey: "claudecode_go_api_key")
+    }
+
+    private func saveLowPowerMode() {
+        UserDefaults.standard.set(lowPowerMode, forKey: "lowPowerMode")
+        applyLowPowerMode()
+    }
+
+    private func applyLowPowerMode() {
+        logStore.setLowPowerMode(lowPowerMode)
+    }
+
+    private func appendLog(level: LogEntry.LogLevel, message: String) {
+        guard !lowPowerMode else { return }
+        logStore.append(level: level, message: message)
     }
 }

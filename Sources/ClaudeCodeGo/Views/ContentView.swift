@@ -3,6 +3,7 @@ import SwiftUI
 /// Main window content for ClaudeCode Go proxy manager.
 struct ContentView: View {
     @EnvironmentObject var proxyManager: ProxyManager
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var showingAPIKeySheet = false
     @State private var showingAbout = false
@@ -16,6 +17,13 @@ struct ContentView: View {
                     .fontWeight(.semibold)
 
                 Spacer()
+
+                Toggle("低功耗", isOn: $proxyManager.lowPowerMode)
+                    .toggleStyle(.checkbox)
+                    .font(.caption)
+                    .controlSize(.small)
+                    .foregroundColor(.secondary)
+                    .help("减少后台日志刷新和界面渲染")
 
                 // API Key button
                 Button {
@@ -60,11 +68,23 @@ struct ContentView: View {
                     .padding(.horizontal)
 
                     // Log output
-                    LogView(
-                        logStore: proxyManager.logStore,
-                        onClear: { proxyManager.clearLogs() }
-                    )
-                    .padding(.horizontal)
+                    if !proxyManager.lowPowerMode {
+                        Group {
+                            if shouldRenderLogs {
+                                LogView(
+                                    logStore: proxyManager.logStore,
+                                    onClear: { proxyManager.clearLogs() }
+                                )
+                            } else {
+                                SuspendedLogView(
+                                    message: suspendedLogMessage,
+                                    onCopy: { proxyManager.logStore.copyToClipboard() },
+                                    onClear: { proxyManager.clearLogs() }
+                                )
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
                 }
                 .padding(.bottom, 16)
             }
@@ -89,7 +109,7 @@ struct ContentView: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
         }
-        .frame(width: 540, height: 620)
+        .frame(width: 540, height: proxyManager.lowPowerMode ? 380 : 620)
         .sheet(isPresented: $showingAPIKeySheet) {
             APIKeySettingsView(apiKey: $proxyManager.apiKey)
         }
@@ -107,6 +127,27 @@ struct ContentView: View {
             支持的模型包括：GLM、Kimi、Qwen、DeepSeek、MiMo、MiniMax 等。
             """)
         }
+        .onAppear {
+            updateLogRendering()
+        }
+        .onChange(of: scenePhase) { _ in
+            updateLogRendering()
+        }
+        .onChange(of: proxyManager.lowPowerMode) { _ in
+            updateLogRendering()
+        }
+    }
+
+    private var shouldRenderLogs: Bool {
+        scenePhase == .active && !proxyManager.lowPowerMode
+    }
+
+    private var suspendedLogMessage: String {
+        "窗口回到台前后继续显示日志"
+    }
+
+    private func updateLogRendering() {
+        proxyManager.setLogRenderingActive(shouldRenderLogs)
     }
 }
 

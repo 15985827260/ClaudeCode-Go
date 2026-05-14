@@ -6,7 +6,6 @@ struct LogView: View {
     let onClear: () -> Void
 
     @State private var autoScroll = true
-    @State private var scrollProxy: ScrollViewProxy? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -44,15 +43,9 @@ struct LogView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 1) {
-                        ForEach(Array(logStore.entries.enumerated().reversed()), id: \.element.id) { index, entry in
+                        ForEach(logStore.entries.reversed(), id: \.id) { entry in
                             LogLineView(entry: entry)
                                 .id(entry.id)
-                                .onAppear {
-                                    // Track the last visible index
-                                    if autoScroll && index == 0 {
-                                        scrollProxy = proxy
-                                    }
-                                }
                         }
                     }
                     .padding(.vertical, 4)
@@ -61,9 +54,7 @@ struct LogView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .onChange(of: logStore.entries.count) { _ in
                     if autoScroll, let last = logStore.entries.last {
-                        withAnimation(.easeOut(duration: 0.1)) {
-                            proxy.scrollTo(last.id, anchor: .bottom)
-                        }
+                        proxy.scrollTo(last.id, anchor: .bottom)
                     }
                 }
             }
@@ -74,6 +65,53 @@ struct LogView: View {
                         .font(.caption)
                 }
             }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(.controlBackgroundColor))
+        )
+    }
+}
+
+/// Lightweight placeholder used while the app is not in the foreground.
+struct SuspendedLogView: View {
+    let message: String
+    let onCopy: () -> Void
+    let onClear: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("日志输出", systemImage: "text.alignleft")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+
+                Spacer()
+
+                Button("复制日志") {
+                    onCopy()
+                }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .help("复制所有日志到剪贴板")
+
+                Button("清空日志") {
+                    onClear()
+                }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .help("清空所有日志")
+            }
+
+            Text(message)
+                .frame(maxWidth: .infinity, minHeight: 120)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .background(Color(.textBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
         }
         .padding()
         .background(

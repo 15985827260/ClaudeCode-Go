@@ -47,10 +47,6 @@ struct ClaudeCodeGoApp: App {
         } label: {
             // Dynamic icon based on state
             Image(nsImage: AppIconGenerator.menuBarIcon(running: proxyManager.state.isRunning))
-                .resizable()
-                .scaledToFit()
-                .frame(width: 18, height: 18)
-                .offset(y: 1)
         }
         .menuBarExtraStyle(.menu)
     }
